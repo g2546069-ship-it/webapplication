@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お天気キャラ持ち物チェック</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="main-screen">
+    <header class="weather-header">
+      <div class="date"></div>
+      <div class="weather-status">
+        <span id="weather-icon">--</span>
+        <span id="temperature">--℃</span>
+      </div>
+    </header>
+
+    <!-- 天気切り替えテスト用コントローラー -->
+    <div class="demo-controls">
+      <span>テスト用:</span>
+      <button onclick="setDemoWeather(0, 20)">晴れ(20℃)</button>
+      <button onclick="setDemoWeather(0, 30)">猛暑(30℃)</button>
+      <button onclick="setDemoWeather(61, 18)">雨(18℃)</button>
+      <button onclick="resetWeather()">リアルタイム</button>
+    </div>
+
+    <main class="character-area">
+      <div id="canvas-container"></div>
+      <div class="comment-box">
+        <p id="comment-text">データ取得中...</p>
+      </div>
+    </main>
+
+    <section class="timeline-section">
+      <div class="timeline"></div>
+    </section>
+  </div>
+
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle" id="sheetHandle">
+      <div class="handle-bar"></div>
+      <span class="handle-title">▲ 持ち物をえらぶ</span>
+    </div>
+
+    <div class="sheet-content">
+      <h2>持ち物チェック</h2>
+      <div class="item-list">
+        <label class="item-card">
+          <input type="checkbox" name="item" value="umbrella">
+          <span>傘</span>
+        </label>
+        <label class="item-card">
+          <input type="checkbox" name="item" value="sunscreen">
+          <span>日焼け止め</span>
+        </label>
+        <label class="item-card">
+          <input type="checkbox" name="item" value="raincoat">
+          <span>雨がっぱ</span>
+        </label>
+        <label class="item-card">
+          <input type="checkbox" name="item" value="wallet">
+          <span>財布</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -84,7 +84,7 @@ body.weather-rainy { background-color: #e6f0fa; }
 #canvas-container {
   width: 100%;
   max-width: 360px;
-  height: 300px;
+  height: 360px;
   display: flex;
   justify-content: center;
   align-items: center;

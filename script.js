@@ -5,9 +5,15 @@ let rawApiData = null;
 
 // 画像アセットオブジェクト
 const images = {
+  // 新しい背景画像
+  backSunny: null, backRainy: null, backCloudy: null,
+  // 天気アイコン
   sunny: null, rainy: null, cloudy: null,
+  // キャラクター体
   bodySuccess: null, bodyFail: null, bodyNormal: null,
+  // 表情
   faceSmile: null, faceCry: null, faceNiko: null,
+  // 持ち物
   raincoat: null, umbrella: null, sunscreen: null
 };
 
@@ -134,7 +140,7 @@ function evaluateItems() {
 
   if (isRainy && !hasUmbrella) {
     characterState = "sad";
-    if (commentText) commentText.textContent = "あわわ！雨なのに傘がないよ！びしょ濡れになっちゃう…😭";
+    if (commentText) commentText.textContent = "雨なのに傘がないよ！びしょ濡れになっちゃう…😭";
   } else if (isSunnyAndHot && !hasSunscreen) {
     characterState = "worried";
     if (commentText) commentText.textContent = "日差しが強くて暑いよ！日焼け止めを忘れずに塗ろう！☀️";
@@ -147,7 +153,6 @@ function evaluateItems() {
   }
 }
 
-// テスト用デモ切替関数
 function setDemoWeather(code, temp) {
   applyWeatherData(code, temp);
 }
@@ -161,34 +166,55 @@ function resetWeather() {
 }
 
 // ==========================================
-// p5.js 画像合成 ＆ ベクター描画フォールバック
+// p5.js 画像読み込み ＆ レイヤー合成処理
 // ==========================================
 function preload() {
-  const loadSafely = (path, key) => {
-    loadImage(path, img => { images[key] = img; }, () => { images[key] = null; });
+  // .png と .jpg のどちらの拡張子でも読み込めるヘルパー関数
+  const loadWithFallback = (basePath, key) => {
+    loadImage(
+      basePath + '.png',
+      img => { images[key] = img; },
+      () => {
+        loadImage(
+          basePath + '.jpg',
+          img => { images[key] = img; },
+          () => { images[key] = null; }
+        );
+      }
+    );
   };
 
-  loadSafely('media/sunny.png', 'sunny');
-  loadSafely('media/rainy.jpg', 'rainy');
-  loadSafely('media/cloudy.png', 'cloudy');
+  // 1. 新しい背景画像
+  loadWithFallback('media/back sunny', 'backSunny');
+  loadWithFallback('media/back rainy', 'backRainy');
+  loadWithFallback('media/back cloudy', 'backCloudy');
 
-  loadSafely('media/success.png', 'bodySuccess');
-  loadSafely('media/fail.png', 'bodyFail');
-  loadSafely('media/nomal.png', 'bodyNormal');
+  // 2. 天気アイコン
+  loadWithFallback('media/sunny', 'sunny');
+  loadWithFallback('media/rainy', 'rainy');
+  loadWithFallback('media/cloudy', 'cloudy');
 
-  loadSafely('media/smile.png', 'faceSmile');
-  loadSafely('media/cry.png', 'faceCry');
-  loadSafely('media/niko.png', 'faceNiko');
+  // 3. キャラの体パーツ
+  loadWithFallback('media/success', 'bodySuccess');
+  loadWithFallback('media/fail', 'bodyFail');
+  loadWithFallback('media/nomal', 'bodyNormal');
 
-  loadSafely('media/raincoat.png', 'raincoat');
-  loadSafely('media/umbrella.png', 'umbrella');
-  loadSafely('media/sunscreen.png', 'sunscreen');
+  // 4. 顔パーツ
+  loadWithFallback('media/smile', 'faceSmile');
+  loadWithFallback('media/cry', 'faceCry');
+  loadWithFallback('media/niko', 'faceNiko');
+
+  // 5. 持ち物パーツ
+  loadWithFallback('media/raincoat', 'raincoat');
+  loadWithFallback('media/umbrella', 'umbrella');
+  loadWithFallback('media/sunscreen', 'sunscreen');
 }
 
 function setup() {
   const container = document.getElementById('canvas-container');
   const canvasWidth = container ? container.clientWidth : 360;
-  const canvas = createCanvas(canvasWidth, 300);
+  const canvasHeight = container ? container.clientHeight : 360;
+  const canvas = createCanvas(canvasWidth, canvasHeight);
   canvas.parent('canvas-container');
   imageMode(CENTER);
 }
@@ -196,140 +222,108 @@ function setup() {
 function draw() {
   clear();
 
-  noStroke();
-  fill(255, 255, 255, 180);
-  rect(0, 0, width, height, 16);
+  // レイヤー1: 天気に応じた背景イラスト（最背面）
+  drawSceneBackground();
 
-  // 1. 天気背景
-  drawWeatherBackground();
+  // レイヤー2: 天気アイコン（太陽・雲・雨を大きくして枠から少しはみ出させる）
+  drawWeatherIcon();
 
-  // 2. キャラクター＆持ち物
+  // レイヤー3〜5: キャラクター（体・表情・持ち物を同じ座標・同じサイズで重ねる）
   drawCharacterAndItems();
 
-  // 3. リアルタイム気温
+  // レイヤー6: リアルタイム気温（右上に表示）
   if (currentTemp !== 0) {
+    // 背景の上でも読みやすいように白い縁取りを追加
+    stroke(255, 255, 255, 220);
+    strokeWeight(6);
     fill(50, 60, 70);
-    noStroke();
     textSize(48);
     textAlign(CENTER, CENTER);
     textFont('sans-serif');
-    text(Math.round(currentTemp) + "°", width * 0.75, 70);
+    text(Math.round(currentTemp) + "°", width * 0.78, 60);
+    noStroke();
   }
 }
 
-function drawWeatherBackground() {
+// 背景イラストの描画（下部の草原が見切れないよう下端合わせで配置）
+function drawSceneBackground() {
   const isSunny = currentWeatherCode === 0;
   const isRainy = (currentWeatherCode >= 51 && currentWeatherCode <= 67) || (currentWeatherCode >= 80 && currentWeatherCode <= 82);
 
-  if (isSunny && images.sunny) {
-    image(images.sunny, 90, 80, 110, 110);
-  } else if (isRainy && images.rainy) {
-    image(images.rainy, 90, 80, 110, 110);
-  } else if (!isSunny && !isRainy && images.cloudy) {
-    image(images.cloudy, 90, 80, 110, 110);
+  let bgImg = images.backCloudy;
+  if (isSunny) bgImg = images.backSunny;
+  else if (isRainy) bgImg = images.backRainy;
+
+  if (bgImg) {
+    // キャンバスの幅に合わせて比率を維持し、下端（草原側）を基準に配置
+    const drawW = width;
+    const drawH = width * (bgImg.height / bgImg.width);
+    const drawY = height - (drawH / 2);
+    image(bgImg, width / 2, drawY, drawW, drawH);
   } else {
-    // 画像未配置時のベクター描画フォールバック
-    push();
-    translate(80, 80);
-    if (isSunny) {
-      fill(255, 180, 50); circle(0, 0, 70);
-      stroke(255, 180, 50); strokeWeight(4);
-      for (let a = 0; a < 360; a += 45) {
-        line(cos(radians(a)) * 45, sin(radians(a)) * 45, cos(radians(a)) * 55, sin(radians(a)) * 55);
-      }
-    } else if (isRainy) {
-      fill(120, 140, 160); noStroke();
-      ellipse(0, 0, 70, 50); ellipse(-20, 10, 50, 40);
-      fill(100, 160, 240);
-      let t = millis() * 0.005;
-      for (let i = -30; i <= 30; i += 20) {
-        let y = ((t * 40 + i * 10) % 40) - 10;
-        ellipse(i, 25 + y, 6, 12);
-      }
-    } else {
-      fill(180, 200, 220); noStroke();
-      ellipse(0, 0, 80, 50); ellipse(-25, 10, 60, 40); ellipse(25, 10, 50, 35);
-    }
-    pop();
+    // 画像未配置時のデフォルト背景
+    noStroke();
+    fill(255, 255, 255, 200);
+    rect(0, 0, width, height);
   }
 }
 
+// 天気アイコンの描画（大きくして枠から少しはみ出る配置）
+function drawWeatherIcon() {
+  const isSunny = currentWeatherCode === 0;
+  const isRainy = (currentWeatherCode >= 51 && currentWeatherCode <= 67) || (currentWeatherCode >= 80 && currentWeatherCode <= 82);
+
+  // 左上寄りに配置し、サイズを大きく（190px）して上端・左端から少しはみ出させる
+  const iconX = 75;
+  const iconY = 75;
+  const iconSize = 190;
+
+  if (isSunny && images.sunny) {
+    image(images.sunny, iconX, iconY, iconSize, iconSize);
+  } else if (isRainy && images.rainy) {
+    image(images.rainy, iconX, iconY, iconSize, iconSize);
+  } else if (!isSunny && !isRainy && images.cloudy) {
+    image(images.cloudy, iconX, iconY, iconSize, iconSize);
+  }
+}
+
+// キャラクター・表情・持ち物の描画（すべて同じ座標・同じサイズで重ねる）
 function drawCharacterAndItems() {
-  const charX = width * 0.70;
-  const charY = height * 0.65;
+  // 草原の上にキャラが立つ位置・サイズ
+  const charX = width * 0.56;
+  const charY = height * 0.60;
+  const charSize = 270;
 
   const hasUmbrella = document.querySelector('input[value="umbrella"]')?.checked;
   const hasRaincoat = document.querySelector('input[value="raincoat"]')?.checked;
   const hasSunscreen = document.querySelector('input[value="sunscreen"]')?.checked;
 
-  if (characterState === "happy") {
-    if (images.bodySuccess && images.faceSmile) {
-      image(images.bodySuccess, charX, charY, 130, 200);
-      image(images.faceSmile, charX - 2, charY - 60, 65, 50);
-      if (hasRaincoat && images.raincoat) image(images.raincoat, charX, charY + 10, 120, 120);
-      if (hasUmbrella && images.umbrella) image(images.umbrella, charX + 25, charY - 10, 100, 100);
-      if (hasSunscreen && images.sunscreen) image(images.sunscreen, charX - 45, charY + 20, 45, 60);
-    } else {
-      drawFallbackCharacter(charX, charY, "happy", { hasUmbrella, hasRaincoat, hasSunscreen });
-    }
-  } else if (characterState === "sad" || characterState === "worried") {
-    if (images.bodyFail && images.faceCry) {
-      image(images.bodyFail, charX, charY + 15, 120, 170);
-      image(images.faceCry, charX - 5, charY - 35, 60, 45);
-    } else {
-      drawFallbackCharacter(charX, charY, characterState, { hasUmbrella, hasRaincoat, hasSunscreen });
-    }
-  } else {
-    if (images.bodyNormal && images.faceNiko) {
-      image(images.bodyNormal, charX, charY, 120, 190);
-      image(images.faceNiko, charX, charY - 60, 60, 45);
-    } else {
-      drawFallbackCharacter(charX, charY, "normal", { hasUmbrella, hasRaincoat, hasSunscreen });
-    }
-  }
-}
+  // 1. 体の描画
+  let bodyImg = images.bodyNormal;
+  if (characterState === "happy") bodyImg = images.bodySuccess;
+  else if (characterState === "sad" || characterState === "worried") bodyImg = images.bodyFail;
 
-function drawFallbackCharacter(x, y, state, items) {
-  push();
-  translate(x, y);
-
-  fill(items.hasRaincoat ? '#3182ce' : '#4a5568');
-  noStroke();
-  rect(-35, -40, 70, 90, 16);
-
-  stroke(items.hasRaincoat ? '#3182ce' : '#4a5568');
-  strokeWeight(12);
-  if (state === "happy") {
-    line(-30, -20, -55, -60); line(30, -20, 55, -60);
-  } else {
-    line(-30, -20, -45, 20); line(30, -20, 45, 20);
+  if (bodyImg) {
+    image(bodyImg, charX, charY, charSize, charSize);
   }
 
-  fill(255, 220, 180); noStroke();
-  circle(0, -65, 65);
+  // 2. 表情の描画（体とまったく同じ座標・サイズで重ねる）
+  let faceImg = images.faceNiko;
+  if (characterState === "happy") faceImg = images.faceSmile;
+  else if (characterState === "sad" || characterState === "worried") faceImg = images.faceCry;
 
-  fill(50);
-  if (state === "happy") {
-    arc(-12, -70, 12, 12, PI, TWO_PI); arc(12, -70, 12, 12, PI, TWO_PI);
-    fill(230, 100, 100); arc(0, -60, 20, 16, 0, PI);
-  } else if (state === "sad" || state === "worried") {
-    ellipse(-12, -70, 8, 8); ellipse(12, -70, 8, 8);
-    noFill(); stroke(50); strokeWeight(3); arc(0, -50, 16, 12, PI, TWO_PI);
-    fill(100, 180, 255); noStroke(); ellipse(18, -65, 6, 10);
-  } else {
-    ellipse(-12, -70, 8, 8); ellipse(12, -70, 8, 8);
-    fill(50); arc(0, -60, 16, 10, 0, PI);
+  if (faceImg) {
+    image(faceImg, charX, charY, charSize, charSize);
   }
 
-  if (items.hasUmbrella) {
-    fill(235, 87, 87); noStroke(); arc(50, -60, 60, 50, PI, TWO_PI);
-    stroke(100); strokeWeight(4); line(50, -60, 50, -10);
+  // 3. 持ち物の描画（チェックが入っているものを同じ座標・サイズで重ねる）
+  if (hasRaincoat && images.raincoat) {
+    image(images.raincoat, charX, charY, charSize, charSize);
   }
-
-  if (items.hasSunscreen) {
-    fill(246, 173, 85); noStroke(); rect(-60, 0, 20, 30, 4);
-    fill(237, 137, 54); rect(-58, -6, 16, 8, 2);
+  if (hasUmbrella && images.umbrella) {
+    image(images.umbrella, charX, charY, charSize, charSize);
   }
-
-  pop();
+  if (hasSunscreen && images.sunscreen) {
+    image(images.sunscreen, charX, charY, charSize, charSize);
+  }
 }
